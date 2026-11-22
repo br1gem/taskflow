@@ -1,0 +1,263 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #172033;
+  background: #f5f7fb;
+  --accent: #0f766e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.appShell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 24px 18px;
+  color: #fff;
+  background: #111827;
+}
+
+.brand,
+.topbar,
+.sectionHeading,
+.taskCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brandMark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--accent);
+  font-weight: 800;
+}
+
+.brand span,
+.sidebarNote span {
+  display: block;
+  margin-top: 4px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.menu {
+  display: grid;
+  gap: 6px;
+}
+
+.menuItem {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  color: #cbd5e1;
+  background: transparent;
+  text-align: left;
+}
+
+.menuItem:hover,
+.menuItem.active {
+  color: #fff;
+  background: #1f2937;
+}
+
+.sidebarNote {
+  margin-top: auto;
+  padding: 14px 12px;
+  border-radius: 10px;
+  background: #1f2937;
+}
+
+.content {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: 36px;
+}
+
+.topbar,
+.sectionHeading,
+.taskCard {
+  justify-content: space-between;
+}
+
+.topbar {
+  margin-bottom: 24px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.subtitle,
+.taskMain p {
+  margin: 6px 0 0;
+  color: #475569;
+}
+
+.primaryButton,
+.ghostButton {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.primaryButton {
+  color: #fff;
+  background: var(--accent);
+}
+
+.ghostButton {
+  color: var(--accent);
+  background: #fff;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.statCard,
+.panel {
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.statCard strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 28px;
+}
+
+.statCard small,
+.taskDate span {
+  color: #475569;
+}
+
+.taskList {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.taskCard {
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.taskTopLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.status,
+.priority {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status.todo {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.status.progress {
+  color: #3730a3;
+  background: #e0e7ff;
+}
+
+.status.done {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.priority {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.taskDate {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.taskDate span {
+  display: block;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .appShell {
+    grid-template-columns: 1fr;
+  }
+
+  .menu {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .content {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 16px;
+  }
+
+  .menu,
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topbar,
+  .sectionHeading,
+  .taskCard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .taskDate {
+    text-align: left;
+  }
+}
