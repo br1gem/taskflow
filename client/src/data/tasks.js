@@ -1,11 +1,11 @@
-export const tasks = [
+export const initialTasks = [
   {
     id: 1,
     title: 'Подготовить структуру отчёта',
     project: 'Учёба',
     status: 'Готово',
     priority: 'Средний',
-    dueDate: '23 ноября',
+    dueDate: '2026-11-23',
   },
   {
     id: 2,
@@ -13,7 +13,7 @@ export const tasks = [
     project: 'TaskFlow',
     status: 'В работе',
     priority: 'Высокий',
-    dueDate: '24 ноября',
+    dueDate: '2026-11-24',
   },
   {
     id: 3,
@@ -21,7 +21,7 @@ export const tasks = [
     project: 'TaskFlow',
     status: 'К выполнению',
     priority: 'Средний',
-    dueDate: '25 ноября',
+    dueDate: '2026-11-25',
   },
   {
     id: 4,
@@ -29,7 +29,7 @@ export const tasks = [
     project: 'Портфолио',
     status: 'К выполнению',
     priority: 'Низкий',
-    dueDate: '26 ноября',
+    dueDate: '2026-11-26',
   },
   {
     id: 5,
@@ -37,7 +37,7 @@ export const tasks = [
     project: 'Учёба',
     status: 'К выполнению',
     priority: 'Средний',
-    dueDate: '27 ноября',
+    dueDate: '2026-11-27',
   },
   {
     id: 6,
@@ -45,7 +45,7 @@ export const tasks = [
     project: 'Учёба',
     status: 'К выполнению',
     priority: 'Высокий',
-    dueDate: '20 ноября',
+    dueDate: '2026-11-20',
     isOverdue: true,
   },
 ];
