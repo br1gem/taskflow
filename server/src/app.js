@@ -1,40 +1,25 @@
 import express from 'express';
 import { randomUUID } from 'node:crypto';
+import pool from './db/pool.js';
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-let tasks = [
-  {
-    id: '11111111-1111-4111-8111-111111111111',
-    title: 'Подготовить макет главной страницы',
-    project: 'Учебный проект',
-    status: 'В работе',
-    priority: 'Высокий',
-    dueDate: '2026-09-20',
-  },
-  {
-    id: '22222222-2222-4222-8222-222222222222',
-    title: 'Разобраться с REST API',
-    project: 'Обучение',
-    status: 'Нужно сделать',
-    priority: 'Средний',
-    dueDate: '2026-09-25',
-  },
-  {
-    id: '33333333-3333-4333-8333-333333333333',
-    title: 'Проверить запросы к серверу',
-    project: 'TaskFlow',
-    status: 'Готово',
-    priority: 'Низкий',
-    dueDate: '2026-09-18',
-  },
-];
-
 const allowedStatuses = ['Нужно сделать', 'В работе', 'Готово'];
 const allowedPriorities = ['Низкий', 'Средний', 'Высокий'];
+const taskFields = ['title', 'project', 'status', 'priority', 'dueDate'];
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const taskColumns = `
+  id, title, project, status, priority,
+  due_date::text AS "dueDate",
+  created_at AS "createdAt",
+  updated_at AS "updatedAt"
+`;
 
 function validateTask(data, partial = false) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -67,108 +52,161 @@ function validateTask(data, partial = false) {
     errors.push('Поле dueDate должно быть строкой');
   }
 
-  if (partial && Object.keys(data).length === 0) {
+  if (partial && !taskFields.some((field) => data[field] !== undefined)) {
     errors.push('Передайте хотя бы одно поле для изменения');
   }
 
   return errors;
 }
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.get('/api/tasks', (req, res) => {
-  const { status, priority } = req.query;
-  let result = tasks;
-
-  if (status) {
-    result = result.filter((task) => task.status === status);
+app.param('id', (req, res, next, id) => {
+  if (!uuidPattern.test(id)) {
+    return res.status(400).json({ message: 'Некорректный id задачи' });
   }
 
-  if (priority) {
-    result = result.filter((task) => task.priority === priority);
-  }
-
-  res.json(result);
+  next();
 });
 
-app.get('/api/tasks/:id', (req, res) => {
-  const task = tasks.find((item) => item.id === req.params.id);
+app.get('/api/health', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT NOW() AS db_time');
 
-  if (!task) {
-    return res.status(404).json({
-      message: 'Задача не найдена',
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      dbTime: rows[0].db_time,
     });
+  } catch (error) {
+    next(error);
   }
-
-  res.json(task);
 });
 
-app.post('/api/tasks', (req, res) => {
-  const errors = validateTask(req.body);
+app.get('/api/tasks', async (req, res, next) => {
+  try {
+    const { status, priority } = req.query;
 
-  if (errors.length > 0) {
-    return res.status(400).json({ errors });
+    const { rows } = await pool.query(
+      `SELECT ${taskColumns}
+       FROM tasks
+       WHERE ($1::text IS NULL OR status = $1)
+         AND ($2::text IS NULL OR priority = $2)
+       ORDER BY created_at DESC`,
+      [status ?? null, priority ?? null],
+    );
+
+    res.json(rows);
+  } catch (error) {
+    next(error);
   }
-
-  const newTask = {
-    id: randomUUID(),
-    title: req.body.title.trim(),
-    project: req.body.project.trim(),
-    status: req.body.status ?? 'Нужно сделать',
-    priority: req.body.priority ?? 'Средний',
-    dueDate: req.body.dueDate ?? '',
-  };
-
-  tasks.unshift(newTask);
-
-  res.status(201).json(newTask);
 });
 
-app.patch('/api/tasks/:id', (req, res) => {
-  const taskIndex = tasks.findIndex((task) => task.id === req.params.id);
+app.get('/api/tasks/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ${taskColumns} FROM tasks WHERE id = $1`,
+      [req.params.id],
+    );
 
-  if (taskIndex === -1) {
-    return res.status(404).json({ message: 'Задача не найдена' });
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Задача не найдена' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    next(error);
   }
-
-  const errors = validateTask(req.body, true);
-
-  if (errors.length > 0) {
-    return res.status(400).json({ errors });
-  }
-
-  const currentTask = tasks[taskIndex];
-
-  const updatedTask = {
-    ...currentTask,
-    title: req.body.title?.trim() ?? currentTask.title,
-    project: req.body.project?.trim() ?? currentTask.project,
-    status: req.body.status ?? currentTask.status,
-    priority: req.body.priority ?? currentTask.priority,
-    dueDate: req.body.dueDate ?? currentTask.dueDate,
-  };
-
-  tasks[taskIndex] = updatedTask;
-  res.json(updatedTask);
 });
 
-app.delete('/api/tasks/:id', (req, res) => {
-  const taskIndex = tasks.findIndex((task) => task.id === req.params.id);
+app.post('/api/tasks', async (req, res, next) => {
+  try {
+    const errors = validateTask(req.body);
 
-  if (taskIndex === -1) {
-    return res.status(404).json({ message: 'Задача не найдена' });
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
+    }
+
+    const { title, project, status, priority, dueDate } = req.body;
+
+    const { rows } = await pool.query(
+      `INSERT INTO tasks (id, title, project, status, priority, due_date)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING ${taskColumns}`,
+      [
+        randomUUID(),
+        title.trim(),
+        project.trim(),
+        status ?? 'Нужно сделать',
+        priority ?? 'Средний',
+        dueDate || null,
+      ],
+    );
+
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    next(error);
   }
+});
 
-  tasks.splice(taskIndex, 1);
-  res.status(204).send();
+app.patch('/api/tasks/:id', async (req, res, next) => {
+  try {
+    const errors = validateTask(req.body, true);
+
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
+    }
+
+    const { title, project, status, priority, dueDate } = req.body;
+
+    const { rows } = await pool.query(
+      `UPDATE tasks
+       SET title = COALESCE($1, title),
+           project = COALESCE($2, project),
+           status = COALESCE($3, status),
+           priority = COALESCE($4, priority),
+           due_date = CASE WHEN $5::boolean THEN $6::date ELSE due_date END,
+           updated_at = NOW()
+       WHERE id = $7
+       RETURNING ${taskColumns}`,
+      [
+        title?.trim() ?? null,
+        project?.trim() ?? null,
+        status ?? null,
+        priority ?? null,
+        dueDate !== undefined,
+        dueDate || null,
+        req.params.id,
+      ],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Задача не найдена' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/tasks/:id', async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(
+      'DELETE FROM tasks WHERE id = $1',
+      [req.params.id],
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({ message: 'Задача не найдена' });
+    }
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.use((req, res) => {
-  res.status(404).json({
-    message: 'Endpoint не найден',
-  });
+  res.status(404).json({ message: 'Endpoint не найден' });
 });
 
 app.use((error, req, res, next) => {
@@ -177,16 +215,19 @@ app.use((error, req, res, next) => {
   }
 
   if (error.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'Некорректный JSON в теле запроса' });
+  }
+
+  const badDataCodes = ['22P02', '22001', '22007', '22008', '23502', '23514'];
+
+  if (badDataCodes.includes(error.code)) {
     return res.status(400).json({
-      message: 'Некорректный JSON в теле запроса',
+      message: 'База данных отклонила переданные данные',
     });
   }
 
   console.error(error);
-
-  res.status(500).json({
-    message: 'Внутренняя ошибка сервера',
-  });
+  res.status(500).json({ message: 'Внутренняя ошибка сервера' });
 });
 
 app.listen(PORT, () => {

@@ -1,74 +1,62 @@
 @baseUrl = http://localhost:3000
 @taskId = 11111111-1111-4111-8111-111111111111
+@deleteTaskId = ad4d5265-16b3-4e55-bd3c-0462881cc631
 
-### Проверить сервер
+### Проверка сервера и PostgreSQL
 GET {{baseUrl}}/api/health
 
 ### Получить все задачи
 GET {{baseUrl}}/api/tasks
 
-### Получить задачи со статусом «Готово»
+### Фильтр по статусу «Готово»
 GET {{baseUrl}}/api/tasks?status=%D0%93%D0%BE%D1%82%D0%BE%D0%B2%D0%BE
+
+### Фильтр по приоритету «Высокий»
+GET {{baseUrl}}/api/tasks?priority=%D0%92%D1%8B%D1%81%D0%BE%D0%BA%D0%B8%D0%B9
 
 ### Получить одну задачу
 GET {{baseUrl}}/api/tasks/{{taskId}}
 
-### Создать задачу
+### Создать тестовую задачу
 POST {{baseUrl}}/api/tasks
 Content-Type: application/json
 
 {
-  "title": "Подготовить третью практику",
+  "title": "Подключить PostgreSQL",
   "project": "TaskFlow",
   "status": "Нужно сделать",
   "priority": "Высокий",
   "dueDate": "2026-09-30"
 }
 
-### Проверить ошибку 400 при пустом названии
+### Ошибка 400 — пустое название
 POST {{baseUrl}}/api/tasks
 Content-Type: application/json
 
 {
   "title": "",
   "project": "TaskFlow",
-  "status": "В работе",
+  "status": "Нужно сделать",
   "priority": "Средний"
 }
 
-### Проверить ошибку 400 при недопустимом статусе
-POST {{baseUrl}}/api/tasks
-Content-Type: application/json
-
-{
-  "title": "Проверить валидацию",
-  "project": "TaskFlow",
-  "status": "Срочно",
-  "priority": "Средний"
-}
-
-### Изменить статус задачи
+### Изменить статус и приоритет задачи
 PATCH {{baseUrl}}/api/tasks/{{taskId}}
 Content-Type: application/json
 
 {
-  "status": "Готово"
-}
-
-### Изменить название и приоритет
-PATCH {{baseUrl}}/api/tasks/{{taskId}}
-Content-Type: application/json
-
-{
-  "title": "Подготовить макет интерфейса",
+  "status": "Готово",
   "priority": "Средний"
 }
 
-### Удалить задачу
-DELETE {{baseUrl}}/api/tasks/{{taskId}}
+### Удалить созданную тестовую задачу
+DELETE {{baseUrl}}/api/tasks/{{deleteTaskId}}
 
-### Проверить ошибку 404 для неизвестной задачи
+### Ошибка 400 — некорректный UUID
+GET {{baseUrl}}/api/tasks/abc
+
+### Ошибка 404 — задача отсутствует
 GET {{baseUrl}}/api/tasks/00000000-0000-4000-8000-000000000000
 
-### Проверить ошибку 404 для неизвестного маршрута
+### Ошибка 404 — неизвестный маршрут
 GET {{baseUrl}}/api/unknown
