@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 function getStatusClass(status) {
   if (status === 'Готово') return 'status done';
   if (status === 'В работе') return 'status progress';
@@ -46,9 +48,15 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
             </button>
           )}
 
-          <button type="button" onClick={() => onEdit(task)}>
-            Изменить
-          </button>
+          <Link className="taskActionLink" to={`/tasks/${task.id}`}>
+            Открыть
+          </Link>
+
+          {onEdit && (
+            <button type="button" onClick={() => onEdit(task)}>
+              Изменить
+            </button>
+          )}
 
           <button
             className="dangerAction"

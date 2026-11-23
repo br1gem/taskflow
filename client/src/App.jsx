@@ -1,36 +1,60 @@
 import { useEffect, useState } from 'react';
-import Header from './components/Header.jsx';
+import { Route, Routes } from 'react-router-dom';
 import Sidebar from './components/Sidebar.jsx';
-import StatCard from './components/StatCard.jsx';
-import TaskCard from './components/TaskCard.jsx';
-import TaskForm from './components/TaskForm.jsx';
-import TaskToolbar from './components/TaskToolbar.jsx';
-import { initialTasks } from './data/tasks.js';
-
-const STORAGE_KEY = 'taskflow.tasks';
-
-function loadTasks() {
-  try {
-    const savedTasks = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(savedTasks) ? savedTasks : initialTasks;
-  } catch {
-    return initialTasks;
-  }
-}
+import DashboardPage from './pages/DashboardPage.jsx';
+import TasksPage from './pages/TasksPage.jsx';
+import TaskDetailsPage from './pages/TaskDetailsPage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
+import {
+  createTask,
+  deleteTask,
+  getTasks,
+  updateTask,
+} from './api/tasksApi.js';
 
 export default function App() {
-  const [tasks, setTasks] = useState(loadTasks);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('Все');
+  const [priorityFilter, setPriorityFilter] = useState('Все');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+    async function loadInitialTasks() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await getTasks();
+        setTasks(data);
+      } catch (requestError) {
+        setError(requestError.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadInitialTasks();
+  }, []);
+
+  async function reloadTasks() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const data = await getTasks();
+      setTasks(data);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const normalizedSearch = search.trim().toLowerCase();
-
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(normalizedSearch) ||
@@ -39,24 +63,11 @@ export default function App() {
     const matchesStatus =
       statusFilter === 'Все' || task.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesPriority =
+      priorityFilter === 'Все' || task.priority === priorityFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority;
   });
-
-  const totalCount = tasks.length;
-  const progressCount = tasks.filter((task) => task.status === 'В работе').length;
-  const doneCount = tasks.filter((task) => task.status === 'Готово').length;
-  const projectCount = new Set(tasks.map((task) => task.project)).size;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const overdueCount = tasks.filter((task) => {
-    return (
-      task.status !== 'Готово' &&
-      task.dueDate &&
-      new Date(`${task.dueDate}T00:00:00`) < today
-    );
-  }).length;
 
   function openCreateForm() {
     setEditingTask(null);
@@ -73,46 +84,61 @@ export default function App() {
     setIsFormOpen(false);
   }
 
-  function handleSaveTask(taskData) {
-    if (editingTask) {
-      setTasks((currentTasks) =>
-        currentTasks.map((task) =>
-          task.id === editingTask.id ? { ...task, ...taskData } : task
-        )
-      );
-    } else {
-      const newTask = { id: crypto.randomUUID(), ...taskData };
-      setTasks((currentTasks) => [newTask, ...currentTasks]);
-    }
+  async function handleSaveTask(taskData) {
+    setError('');
 
-    closeForm();
+    try {
+      if (editingTask) {
+        const updated = await updateTask(editingTask.id, taskData);
+
+        setTasks((currentTasks) =>
+          currentTasks.map((task) =>
+            task.id === updated.id ? updated : task
+          )
+        );
+      } else {
+        const created = await createTask(taskData);
+        setTasks((currentTasks) => [created, ...currentTasks]);
+      }
+
+      closeForm();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
-  function handleDeleteTask(taskId) {
-    if (window.confirm('Удалить эту задачу?')) {
+  async function handleDeleteTask(taskId) {
+    const confirmed = window.confirm('Удалить эту задачу?');
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError('');
+
+    try {
+      await deleteTask(taskId);
       setTasks((currentTasks) =>
         currentTasks.filter((task) => task.id !== taskId)
       );
+    } catch (requestError) {
+      setError(requestError.message);
     }
   }
 
-  function handleStatusChange(taskId, status) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, status } : task
-      )
-    );
-  }
+  async function handleStatusChange(taskId, status) {
+    setError('');
 
-  function resetFilters() {
-    setSearch('');
-    setStatusFilter('Все');
-  }
+    try {
+      const updated = await updateTask(taskId, { status });
 
-  function resetTasks() {
-    if (window.confirm('Вернуть исходные учебные задачи?')) {
-      setTasks(initialTasks);
-      resetFilters();
+      setTasks((currentTasks) =>
+        currentTasks.map((task) =>
+          task.id === updated.id ? updated : task
+        )
+      );
+    } catch (requestError) {
+      setError(requestError.message);
     }
   }
 
@@ -121,68 +147,56 @@ export default function App() {
       <Sidebar />
 
       <main className="content">
-        <Header onCreateTask={openCreateForm} />
-
-        <section className="statsGrid" aria-label="Статистика">
-          <StatCard label="Всего задач" value={totalCount} note="Все текущие задачи" />
-          <StatCard label="В работе" value={progressCount} note="Активные задачи" />
-          <StatCard label="Готово" value={doneCount} note="Завершённые задачи" />
-          <StatCard label="Проектов" value={projectCount} note="Уникальные проекты" />
-          <StatCard label="Просрочено" value={overdueCount} note="Срок истёк" />
-        </section>
-
-        <section className="panel">
-          <div className="sectionHeading">
-            <div>
-              <p className="eyebrow">Фокус</p>
-              <h2>Задачи</h2>
-            </div>
-
-            <button className="ghostButton" type="button" onClick={resetTasks}>
-              Исходные задачи
-            </button>
-          </div>
-
-          <TaskToolbar
-            search={search}
-            statusFilter={statusFilter}
-            onSearchChange={setSearch}
-            onStatusFilterChange={setStatusFilter}
-            onResetFilters={resetFilters}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <DashboardPage
+                tasks={tasks}
+                loading={loading}
+                error={error}
+                onRetry={reloadTasks}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDeleteTask}
+              />
+            }
           />
 
-          <div className="resultLine">
-            Найдено задач: {filteredTasks.length}
-          </div>
+          <Route
+            path="/tasks"
+            element={
+              <TasksPage
+                filteredTasks={filteredTasks}
+                loading={loading}
+                error={error}
+                search={search}
+                statusFilter={statusFilter}
+                priorityFilter={priorityFilter}
+                isFormOpen={isFormOpen}
+                editingTask={editingTask}
+                onRetry={reloadTasks}
+                onSearchChange={setSearch}
+                onStatusFilterChange={setStatusFilter}
+                onPriorityFilterChange={setPriorityFilter}
+                onResetFilters={() => {
+                  setSearch('');
+                  setStatusFilter('Все');
+                  setPriorityFilter('Все');
+                }}
+                onCreateTask={openCreateForm}
+                onEditTask={openEditForm}
+                onCloseForm={closeForm}
+                onSaveTask={handleSaveTask}
+                onDeleteTask={handleDeleteTask}
+                onStatusChange={handleStatusChange}
+              />
+            }
+          />
 
-          <div className="taskList">
-            {filteredTasks.length > 0 ? (
-              filteredTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onEdit={openEditForm}
-                  onDelete={handleDeleteTask}
-                  onStatusChange={handleStatusChange}
-                />
-              ))
-            ) : (
-              <div className="emptyState">
-                <strong>Задачи не найдены</strong>
-                <span>Измените запрос или сбросьте фильтры.</span>
-              </div>
-            )}
-          </div>
-        </section>
+          <Route path="/tasks/:id" element={<TaskDetailsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
       </main>
-
-      {isFormOpen && (
-        <TaskForm
-          task={editingTask}
-          onSave={handleSaveTask}
-          onCancel={closeForm}
-        />
-      )}
     </div>
   );
 }

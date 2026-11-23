@@ -3,6 +3,8 @@ export default function TaskToolbar({
   statusFilter,
   onSearchChange,
   onStatusFilterChange,
+  priorityFilter,
+  onPriorityFilterChange,
   onResetFilters,
 }) {
   return (
@@ -27,6 +29,19 @@ export default function TaskToolbar({
           <option value="Нужно сделать">Нужно сделать</option>
           <option value="В работе">В работе</option>
           <option value="Готово">Готово</option>
+        </select>
+      </label>
+
+      <label className="filterField">
+        <span>Приоритет</span>
+        <select
+          value={priorityFilter}
+          onChange={(event) => onPriorityFilterChange(event.target.value)}
+        >
+          <option value="Все">Все</option>
+          <option value="Низкий">Низкий</option>
+          <option value="Средний">Средний</option>
+          <option value="Высокий">Высокий</option>
         </select>
       </label>
 
