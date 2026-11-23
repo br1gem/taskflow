@@ -60,3 +60,22 @@ GET {{baseUrl}}/api/tasks/00000000-0000-4000-8000-000000000000
 
 ### Ошибка 404 — неизвестный маршрут
 GET {{baseUrl}}/api/unknown
+
+### Регистрация тестового пользователя
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Алексей",
+  "email": "practice6@example.com",
+  "password": "password123"
+}
+
+### Профиль текущего пользователя
+GET http://localhost:3000/api/auth/me
+
+### Задачи текущего пользователя
+GET http://localhost:3000/api/tasks
+
+### Выход
+POST http://localhost:3000/api/auth/logout
