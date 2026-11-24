@@ -315,12 +315,6 @@ h3 {
   min-height: 44px;
 }
 
-.resultLine {
-  margin: 4px 0 12px;
-  color: #667085;
-  font-size: 13px;
-}
-
 .taskActions {
   display: flex;
   flex-wrap: wrap;
